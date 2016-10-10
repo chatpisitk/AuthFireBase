@@ -82,4 +82,6 @@
     <string name="action_logout">Logout</string>
     <string name="action_mark_all_read">Mark All as Read</string>
     <string name="privacy_policy">Privacy Policy</string>
+    <string name="twitter_consumer_key">6H1tAZPPb79JNUALxzlWJEHFX</string>
+    <string name="twitter_consumer_secret">HQdJdLq0RMhFGNfx1OAbKdJzixHiAoAR0Zemq73crL10jLlMbR</string>
 </resources>

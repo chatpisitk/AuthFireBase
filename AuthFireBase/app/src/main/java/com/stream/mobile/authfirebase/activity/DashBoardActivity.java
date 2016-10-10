@@ -48,8 +48,11 @@ public class DashBoardActivity extends AppCompatActivity {
 
     // urls to load navigation header background image
     // and profile image
-    private static final String urlNavHeaderBg = "http://api.androidhive.info/images/nav-menu-header-bg.jpg";
-    private static final String urlProfileImg = "https://lh3.googleusercontent.com/eCtE_G34M9ygdkmOpYvCag1vBARCmZwnVS6rS5t4JLzJ6QgQSBquM0nuTsCpLhYbKljoyS-txg";
+//    private static final String urlNavHeaderBg = "http://api.androidhive.info/images/nav-menu-header-bg.jpg";
+    private static final String urlNavHeaderBg = "https://encrypted-tbn3.gstatic.com/images?q=tbn:ANd9GcQth4OIyBvfeuqZt1_ADoVS0jP0w6Wqnr6__jGs3-ga13mzRumzoF6EiI8";
+    private static final String urlProfileImg = "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcQVvwZMFeflTzEKEGSGRdzQMF4z6erGnZYdGHUIF53MySz9NM2L";
+//    private static final String urlProfileImg = "https://lh3.googleusercontent.com/eCtE_G34M9ygdkmOpYvCag1vBARCmZwnVS6rS5t4JLzJ6QgQSBquM0nuTsCpLhYbKljoyS-txg";
+
 
     // index to identify current nav menu item
     public static int navItemIndex = 0;
@@ -120,8 +123,8 @@ public class DashBoardActivity extends AppCompatActivity {
      */
     private void loadNavHeader() {
         // name, website
-        txtName.setText("Ravi Tamada");
-        txtWebsite.setText("www.androidhive.info");
+        txtName.setText("FireBase Auth");
+        txtWebsite.setText("Stream Mobile");
 
         // loading header background image
         Glide.with(this).load(urlNavHeaderBg)

@@ -16,20 +16,48 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import com.facebook.AccessToken;
+import com.facebook.CallbackManager;
+import com.facebook.FacebookCallback;
+import com.facebook.FacebookException;
+import com.facebook.FacebookSdk;
+import com.facebook.login.LoginManager;
+import com.facebook.login.LoginResult;
+import com.google.android.gms.auth.api.Auth;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.auth.api.signin.GoogleSignInResult;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.analytics.FirebaseAnalytics;
+import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FacebookAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.firebase.auth.TwitterAuthProvider;
 import com.google.firebase.crash.FirebaseCrash;
 import com.stream.mobile.authfirebase.R;
+import com.twitter.sdk.android.Twitter;
+import com.twitter.sdk.android.core.Callback;
+import com.twitter.sdk.android.core.Result;
+import com.twitter.sdk.android.core.TwitterAuthConfig;
+import com.twitter.sdk.android.core.TwitterException;
+import com.twitter.sdk.android.core.TwitterSession;
+import com.twitter.sdk.android.core.identity.TwitterLoginButton;
 
 import java.io.InputStream;
 import java.net.URL;
 
-public class MainActivity extends BaseActivity {
+import io.fabric.sdk.android.Fabric;
+
+public class MainActivity extends BaseActivity implements
+        GoogleApiClient.OnConnectionFailedListener {
 
     Button btnSignIn;
     Button btnFacebookLogin;
@@ -45,11 +73,15 @@ public class MainActivity extends BaseActivity {
     Button sign_out_button;
 
     ImageView mImageView;
+    private CallbackManager mCallbackManager;
     private FirebaseAnalytics mFirebaseAnalytics;
     private static final String TAG = "MainActivity";
     private FirebaseAuth mAuth;
     private FirebaseAuth.AuthStateListener mAuthListener;
-
+    private GoogleApiClient mGoogleApiClient;
+    private static final int RC_SIGN_IN = 9001;
+//    private TwitterLoginButton mLoginButton;
+//    private LoginButton FacebookLoginBtn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,11 +101,32 @@ public class MainActivity extends BaseActivity {
         pass = mPasswordField.getText().toString();
         mStatusTextView = (TextView) findViewById(R.id.profile);
 
-        FirebaseCrash.report(new Exception("My first Android non-fatal error"));
+        FirebaseCrash.report(new Exception("Android non-fatal error"));
         FirebaseCrash.log("Activity created");
 
         // Initialize
         mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
+
+        // Configure Twitter SDK
+        TwitterAuthConfig authConfig = new TwitterAuthConfig(
+                getString(R.string.twitter_consumer_key),
+                getString(R.string.twitter_consumer_secret));
+//        TwitterAuthConfig authConfig = new TwitterAuthConfig(TWITTER_KEY, TWITTER_SECRET);
+        Fabric.with(this, new Twitter(authConfig));
+
+        FacebookSdk.sdkInitialize(this);
+
+
+        // Configure Google Sign In
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(R.string.default_web_client_id))
+                .requestEmail()
+                .build();
+
+        mGoogleApiClient = new GoogleApiClient.Builder(this)
+                .enableAutoManage(this /* FragmentActivity */, this /* OnConnectionFailedListener */)
+                .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
+                .build();
 
         // Set user property
         mFirebaseAnalytics.setUserProperty("use_activity", "user_signin");
@@ -95,6 +148,8 @@ public class MainActivity extends BaseActivity {
         };
 
         ButtonClick();
+        FacebookOnclick();
+//        TwitterOnclick();
     }
 
     @Override
@@ -111,6 +166,173 @@ public class MainActivity extends BaseActivity {
         }
     }
 
+
+    //Google Sign In
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        // Result returned from launching the Intent from GoogleSignInApi.getSignInIntent(...);
+        if (requestCode == RC_SIGN_IN) {
+            GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
+            if (result.isSuccess()) {
+                // Google Sign In was successful, authenticate with Firebase
+                GoogleSignInAccount account = result.getSignInAccount();
+                firebaseAuthWithGoogle(account);
+
+                Intent itn = new Intent(MainActivity.this, DashBoardActivity.class);
+                startActivity(itn);
+            } else {
+                // Google Sign In failed, update UI appropriately
+                updateUI(null);
+            }
+        }
+    }
+
+    private void firebaseAuthWithGoogle(GoogleSignInAccount acct) {
+        Log.d(TAG, "firebaseAuthWithGoogle:" + acct.getId());
+        showProgressDialog();
+
+        AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
+        mAuth.signInWithCredential(credential)
+                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                        Log.d(TAG, "signInWithCredential:onComplete:" + task.isSuccessful());
+                        if (!task.isSuccessful()) {
+                            Log.w(TAG, "signInWithCredential", task.getException());
+                            Toast.makeText(MainActivity.this, "Authentication failed.", Toast.LENGTH_SHORT).show();
+                        }
+                        hideProgressDialog();
+                    }
+                });
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+        // An unresolvable error has occurred and Google APIs (including Sign-In) will not
+        // be available.
+        Log.d(TAG, "onConnectionFailed:" + connectionResult);
+        Toast.makeText(this, "Google Play Services error.", Toast.LENGTH_SHORT).show();
+    }
+
+    //Facebook Auth
+    private void handleFacebookAccessToken(AccessToken token) {
+        Log.d(TAG, "handleFacebookAccessToken:" + token);
+        showProgressDialog();
+
+        AuthCredential credential = FacebookAuthProvider.getCredential(token.getToken());
+        mAuth.signInWithCredential(credential).addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+            @Override
+            public void onComplete(@NonNull Task<AuthResult> task) {
+                Log.d(TAG, "signInWithCredential:onComplete:" + task.isSuccessful());
+                if (!task.isSuccessful()) {
+                    mStatusTextView.setTextColor(Color.RED);
+                    mStatusTextView.setText(task.getException().getMessage());
+                } else {
+                    mStatusTextView.setTextColor(Color.DKGRAY);
+                }
+                hideProgressDialog();
+            }
+        });
+    }
+
+    public void FacebookOnclick() {
+        // Initialize Facebook Login button
+        mCallbackManager = CallbackManager.Factory.create();
+//        LoginButton FacebookLoginBtn = (LoginButton) findViewById(R.id.btnFacebookLogin);
+//        FacebookLoginBtn.setReadPermissions("email", "public_profile");
+//        FacebookLoginBtn.registerCallback(mCallbackManager, new FacebookCallback<LoginResult>() {
+//            @Override
+//            public void onSuccess(LoginResult loginResult) {
+//                Log.d(TAG, "facebook:onSuccess:" + loginResult);
+//                handleFacebookAccessToken(loginResult.getAccessToken());
+//                Intent itn = new Intent(MainActivity.this, DashBoardActivity.class);
+//                startActivity(itn);
+//            }
+//
+//            @Override
+//            public void onCancel() {
+//                Log.d(TAG, "facebook:onCancel");
+//                updateUI(null);
+//            }
+//
+//            @Override
+//            public void onError(FacebookException error) {
+//                Log.d(TAG, "facebook:onError", error);
+//                updateUI(null);
+//            }
+//        });
+
+        LoginManager.getInstance().registerCallback(mCallbackManager,
+                new FacebookCallback<LoginResult>() {
+                    @Override
+                    public void onSuccess(LoginResult loginResult) {
+                        // login successful
+                        Log.d(TAG, "facebook:onSuccess:" + loginResult);
+                        handleFacebookAccessToken(loginResult.getAccessToken());
+                        Intent itn = new Intent(MainActivity.this, DashBoardActivity.class);
+                        startActivity(itn);
+                    }
+
+                    @Override
+                    public void onCancel() {
+                        // login cancelled
+                    }
+
+                    @Override
+                    public void onError(FacebookException exception) {
+                        // login error
+                    }
+                });
+    }
+
+    //Twitter Auth
+    private void handleTwitterSession(TwitterSession session) {
+        Log.d(TAG, "handleTwitterSession:" + session);
+        showProgressDialog();
+
+        AuthCredential credential = TwitterAuthProvider.getCredential(
+                session.getAuthToken().token,
+                session.getAuthToken().secret);
+
+        mAuth.signInWithCredential(credential)
+                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                        Log.d(TAG, "signInWithCredential:onComplete:" + task.isSuccessful());
+
+                        if (!task.isSuccessful()) {
+                            Log.w(TAG, "signInWithCredential", task.getException());
+                            Toast.makeText(MainActivity.this, "Authentication failed.",
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                        hideProgressDialog();
+                    }
+                });
+    }
+
+    public void TwitterOnclick() {
+        // initialize_twitter_login
+        TwitterLoginButton mLoginButton = (TwitterLoginButton) findViewById(R.id.btnTwitterLogin);
+        mLoginButton.setCallback(new Callback<TwitterSession>() {
+            @Override
+            public void success(Result<TwitterSession> result) {
+                Log.d(TAG, "twitterLogin:success" + result);
+                handleTwitterSession(result.data);
+                Intent itn = new Intent(MainActivity.this, DashBoardActivity.class);
+                startActivity(itn);
+            }
+
+            @Override
+            public void failure(TwitterException exception) {
+                Log.w(TAG, "twitterLogin:failure", exception);
+                updateUI(null);
+            }
+        });
+    }
+
+    //Create Account
     private void createAccount(String email, String password) {
 
         if (!validateForm()) {
@@ -209,7 +431,7 @@ public class MainActivity extends BaseActivity {
             findViewById(R.id.email_password_fields).setVisibility(View.GONE);
             findViewById(R.id.sign_out_button).setVisibility(View.VISIBLE);
         } else {
-//            mStatusTextView.setText(R.string.signed_out);
+            mStatusTextView.setText(R.string.signed_out);
             mDetailTextView.setText(null);
 
             findViewById(R.id.email_password_buttons).setVisibility(View.VISIBLE);
@@ -217,24 +439,6 @@ public class MainActivity extends BaseActivity {
             findViewById(R.id.sign_out_button).setVisibility(View.GONE);
         }
     }
-
-//    // android:onClick="sendPredefineEvent" in Button
-//    public void sendPredefineEvent(View view) {
-//        Bundle bundle = new Bundle();
-//        bundle.putString(FirebaseAnalytics.Param.ITEM_ID, "12345");
-//        bundle.putString(FirebaseAnalytics.Param.ITEM_NAME, "Nougat");
-//        bundle.putString(FirebaseAnalytics.Param.CONTENT_TYPE, "Image");
-//        mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, bundle);
-//    }
-//
-//    // android:onClick="sendCustomEvent" in Button
-//    public void sendCustomEvent(View view) {
-//        Bundle params = new Bundle();
-//        params.putString("image_name", "android.png");
-//        params.putString("full_text", "Android 7.0 Nougat");
-//        mFirebaseAnalytics.logEvent("share_image", params);
-//    }
-
 
     public void ButtonClick() {
         btnSignIn.setOnClickListener(new View.OnClickListener() {
@@ -253,28 +457,23 @@ public class MainActivity extends BaseActivity {
                 createAccount(mEmailField.getText().toString(), mPasswordField.getText().toString());
             }
         });
+//        btnFacebookLogin.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                LoginManager.getInstance().logInWithReadPermissions(MainActivity.this, Arrays.asList("email", "public_profile"));
+//            }
+//        });
         sign_out_button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 signOut();
             }
         });
-        btnFacebookLogin.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-
-            }
-        });
-        btnTwitterLogin.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-
-            }
-        });
         btnGoogleSignin.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
+                Intent signInIntent = Auth.GoogleSignInApi.getSignInIntent(mGoogleApiClient);
+                startActivityForResult(signInIntent, RC_SIGN_IN);
             }
         });
     }

@@ -1,16 +1,18 @@
 package com.stream.mobile.authfirebase.activity;
 
 import android.app.ProgressDialog;
+import android.support.annotation.NonNull;
 import android.support.annotation.VisibleForTesting;
 import android.support.v7.app.AppCompatActivity;
 
+import com.google.android.gms.common.ConnectionResult;
 import com.stream.mobile.authfirebase.R;
 
 /**
  * Created by chatpisit.kaewwata on 5/10/2559.
  */
 
-public class BaseActivity extends AppCompatActivity {
+public abstract class BaseActivity extends AppCompatActivity {
 
     @VisibleForTesting
     public ProgressDialog mProgressDialog;
@@ -37,4 +39,5 @@ public class BaseActivity extends AppCompatActivity {
         hideProgressDialog();
     }
 
+    public abstract void onConnectionFailed(@NonNull ConnectionResult connectionResult);
 }
