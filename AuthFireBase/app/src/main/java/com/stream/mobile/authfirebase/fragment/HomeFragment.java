@@ -9,7 +9,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.LocalBroadcastManager;
-import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -20,6 +19,8 @@ import com.google.firebase.messaging.FirebaseMessaging;
 import com.stream.mobile.authfirebase.R;
 import com.stream.mobile.authfirebase.fcm.NotificationUtils;
 import com.stream.mobile.authfirebase.other.Config;
+
+import static com.facebook.FacebookSdk.getApplicationContext;
 
 
 /**
@@ -116,13 +117,14 @@ public class HomeFragment extends Fragment {
         String regId = pref.getString("regId", null);
 
         Log.e(TAG, "Firebase reg id: " + regId);
+        Toast.makeText(getApplicationContext(), "Login Success.", Toast.LENGTH_SHORT).show();
 
-        if (!TextUtils.isEmpty(regId))
-//            txtRegId.setText("Firebase Reg Id: " + regId);
-            Toast.makeText(getContext(), "Firebase Reg Id: " + regId, Toast.LENGTH_SHORT).show();
-        else
-//            txtRegId.setText("Firebase Reg Id is not received yet!");
-            Toast.makeText(getContext(), "Firebase Reg Id is not received yet!", Toast.LENGTH_SHORT).show();
+//        if (!TextUtils.isEmpty(regId))
+////            txtRegId.setText("Firebase Reg Id: " + regId);
+//            Toast.makeText(getContext(), "Firebase Reg Id: " + regId, Toast.LENGTH_SHORT).show();
+//        else
+////            txtRegId.setText("Firebase Reg Id is not received yet!");
+//            Toast.makeText(getContext(), "Firebase Reg Id is not received yet!", Toast.LENGTH_SHORT).show();
     }
 
     @Override

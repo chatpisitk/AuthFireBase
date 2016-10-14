@@ -84,4 +84,7 @@
     <string name="privacy_policy">Privacy Policy</string>
     <string name="twitter_consumer_key">6H1tAZPPb79JNUALxzlWJEHFX</string>
     <string name="twitter_consumer_secret">HQdJdLq0RMhFGNfx1OAbKdJzixHiAoAR0Zemq73crL10jLlMbR</string>
+    <string name="facebook_app_id">887878641356631</string>
+    <string name="twitter_api_key">083bff8df2e705e761844628193d1863268e4e84</string>
+
 </resources>
